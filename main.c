@@ -34,10 +34,11 @@ void* post_process(void* param)
 	long tick = 0;
 	int send_flag = 0;
 	int sock = *((int*)param);
-	
+	int num;
+	char data[100]={0};
 	con_req.msg_type = PACKET_TYPE_CONN_REQ;
-	con_req.device_id = "qiuzhb";
-	con_req.key = "677abb3a5ff3456fb831c96482f11536";
+	con_req.device_id = "xinxi208";
+	con_req.key = "066ee3f24ce84a5ca1847457fc1c42a4";
 	con_req.ver = "V1.0";
 	packet = packet_msg(&con_req);
 	ret = send_packet(sock, packet, strlen(packet), 0);
@@ -51,18 +52,20 @@ void* post_process(void* param)
 	sleep_time.tv_nsec = 100000000;
 
 	memset(&post_req, 0, sizeof(post_req));
-
 	while(1){
 		if(is_auth_ok){
 			if(tick == 30){
+				srand(time(0));
+				num = rand() % (30 - 22) + 22;  
+				printf("num=%d\n", num);
 				//数据类型为1（JSON格式1字符串）
+				sprintf(data,"{\
+				\"nl_temperature\":\"%d\"\
+				}",num);
 				post_req.msg_type = PACKET_TYPE_POST_DATA;
 				post_req.msg_id++;
 				post_req.data_type = 1;
-				post_req.data = "{\
-				\"nl_temperature\": \"23\",\
-				\"nl_light\": 2000\
-				}";
+				post_req.data =data;
 				post_req.data_len = strlen(post_req.data);
 				packet = packet_msg(&post_req);
 				if(packet == NULL){
@@ -71,66 +74,8 @@ void* post_process(void* param)
 					MAIN_DBG("POST JSON 1 \n");
 					send_flag = 1;
 				}
-			}else if(tick == 60){
-				//数据类型为2（JSON格式2字符串）
-				post_req.msg_type = PACKET_TYPE_POST_DATA;
-				post_req.msg_id++;
-				post_req.data_type = 2;
-				post_req.data = "{\
-					\"nl_temperature\":{\"2017-03-22 22:31:12\":\"66\"},\
-					\"nl_light\": {\"2017-05-22 12:31:12\":\"800\"}\
-					}";
-				post_req.data_len = strlen(post_req.data);
-				packet = packet_msg(&post_req);
-				if(packet == NULL){
-					MAIN_ERR("packet_msg JSON 2 error\n");
-				}else{
-					MAIN_DBG("POST JSON 2 \n");
-					send_flag = 1;
-				}
-			}else if(tick == 90){
-				//数据类型为3（JSON格式3字符串）
-				post_req.msg_type = PACKET_TYPE_POST_DATA;
-				post_req.msg_id++;
-				post_req.data_type = 3;
-				post_req.data = "\
-				[\
-					{\
-						\"apitag\":\"temperature1\",\
-						\"datapoints\":[\
-							{\
-							\"dt\":\"2018-01-22 22:22:22\",\
-							\"value\": 36.5\
-							},\
-							{\
-							\"dt\":\"2018-01-22 11:11:11\",\
-							\"value\": 30.5\
-							}\
-						]\
-					},\
-					{\
-						\"apitag\":\"temperature2\",\
-						\"datapoints\":[\
-							{\
-							\"dt\":\"2018-01-22 00:00:00\",\
-							\"value\": 36.5\
-							},\
-							{\
-							\"dt\":\"2018-01-22 12:12:12\",\
-							\"value\": 55.5\
-							}\
-						]\
-					}\
-				]";
-				post_req.data_len = strlen(post_req.data);
-				packet = packet_msg(&post_req);
-				if(packet == NULL){
-					MAIN_ERR("packet_msg JSON 3 error\n");
-				}else{
-					MAIN_DBG("POST JSON 3 \n");
-					send_flag = 1;
-				}
 			}
+
 			
 			if(send_flag){
 				ret = send_packet(sock, packet, strlen(packet), 0);
@@ -219,7 +164,8 @@ void* recv_process(void* param)
 							case CMD_DATA_TYPE_NUM:
 								is_cmd_need_rsp = 1;
 								MAIN_DBG("unpacket, msg_type:%d, msg_id:%d apitag:%s, data:%d\n", 
-										cmd_rcv->msg_type, cmd_rcv->cmd_id, cmd_rcv->api_tag, *((int*)cmd_rcv->data));	
+										cmd_rcv->msg_type, cmd_rcv->cmd_id, cmd_rcv->api_tag, *((int*)cmd_rcv->data));
+	
 								break;
 							case CMD_DATA_TYPE_DOUBLE:
 								is_cmd_need_rsp = 1;
@@ -277,7 +223,6 @@ int main(int argc, char **argv)
 	int sock;
 	pthread_t send_pid;
 	pthread_t recv_pid;
-
 	sock = open_client_port(0);
 	if(sock == -1){
 		MAIN_ERR("open_client_port error\n");
@@ -291,10 +236,8 @@ int main(int argc, char **argv)
 		MAIN_DBG("connect server OK\n");
 	}
 
-
-    pthread_create(&send_pid, NULL, post_process, &sock);
+	pthread_create(&send_pid, NULL, post_process, &sock);
 	pthread_create(&recv_pid, NULL, recv_process, &sock);
-	
 	pthread_join(send_pid, NULL);
 	pthread_join(recv_pid, NULL);
 	return 0;
