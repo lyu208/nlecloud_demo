@@ -23,19 +23,13 @@
 #define	SERVER_PORT	8600
 
 int is_auth_ok = 0;
-
-void* post_process(void* param)
-{
+void* Connect_demo(void* param){
 	int ret;
 	CON_REQ con_req;
-	PACKET packet;
 	POST_REQ post_req;
+	PACKET packet;
 	struct timespec sleep_time;
-	long tick = 0;
-	int send_flag = 0;
 	int sock = *((int*)param);
-	int num;
-	char data[100]={0};
 	con_req.msg_type = PACKET_TYPE_CONN_REQ;
 	con_req.device_id = "xinxi208";
 	con_req.key = "066ee3f24ce84a5ca1847457fc1c42a4";
@@ -46,57 +40,49 @@ void* post_process(void* param)
 		MAIN_ERR("PACKET_TYPE_CONN_REQ error\n");
 	}
 	free_packet_msg(packet);
-
-	//10 milli second
+	//延时10ms
 	sleep_time.tv_sec = 0;
 	sleep_time.tv_nsec = 100000000;
-
 	memset(&post_req, 0, sizeof(post_req));
-	while(1){
-		if(is_auth_ok){
-			if(tick == 30){
-				srand(time(0));
-				num = rand() % (30 - 22) + 22;  
-				printf("num=%d\n", num);
-				//数据类型为1（JSON格式1字符串）
-				sprintf(data,"{\
-				\"nl_temperature\":\"%d\"\
-				}",num);
-				post_req.msg_type = PACKET_TYPE_POST_DATA;
-				post_req.msg_id++;
-				post_req.data_type = 1;
-				post_req.data =data;
-				post_req.data_len = strlen(post_req.data);
-				packet = packet_msg(&post_req);
-				if(packet == NULL){
-					MAIN_ERR("packet_msg JSON 1 error\n");
-				}else{
-					MAIN_DBG("POST JSON 1 \n");
-					send_flag = 1;
-				}
-			}
+}
 
-			
-			if(send_flag){
-				ret = send_packet(sock, packet, strlen(packet), 0);
-				if(ret < 0){
-					MAIN_ERR("PACKET_TYPE_POST_DATA error\n");
-				}
-				free_packet_msg(packet);
-				send_flag = 0;
-			}
+void* send_process(void* param)
+{
+int ret;
+	PACKET packet;
+	POST_REQ post_req;
+	int send_flag = 0;
+	int sock = *((int*)param);
+	int num;
+	char data[100]={0};
+		srand(time(0));
+		num = rand() % (30 - 22) + 22;  //模拟温度数据
+		//数据类型为1（JSON格式1字符串）
+		sprintf(data,"{\
+		\"nl_temperature\":\"%d\"\
+		}",num);//构造数据格式
+		post_req.msg_type = PACKET_TYPE_POST_DATA;
+		post_req.msg_id++;
+		post_req.data_type = 1;
+		post_req.data =data;
+		post_req.data_len = strlen(post_req.data);
+		packet = packet_msg(&post_req);
+		if(packet == NULL){
+			MAIN_ERR("packet_msg JSON 1 error\n");
+		}else{
+			MAIN_DBG("POST JSON 1 \n");
+			send_flag = 1;
 		}
+		if(send_flag){
+			ret = send_packet(sock, packet, strlen(packet), 0);
+			if(ret < 0){
+				MAIN_ERR("PACKET_TYPE_POST_DATA error\n");
+			}
+		free_packet_msg(packet);
+		send_flag = 0;
+			}
+		
 
-		//sleep 10 milli second
-		nanosleep((const struct timespec*)&sleep_time, NULL);
-		tick++;
-		if(tick > 90){
-			sleep(80);
-			tick = 0;
-		}
-	}
-
-	return 0;
 }
 
 #define	KEEP_ALIVE_MSG		"$#AT#\r"
@@ -235,10 +221,12 @@ int main(int argc, char **argv)
 	}else{
 		MAIN_DBG("connect server OK\n");
 	}
-
-	pthread_create(&send_pid, NULL, post_process, &sock);
 	pthread_create(&recv_pid, NULL, recv_process, &sock);
-	pthread_join(send_pid, NULL);
+	Connect_demo(&sock);
+	while(1){
+		send_process(&sock);
+		sleep(30);
+	}
 	pthread_join(recv_pid, NULL);
 	return 0;
 }
