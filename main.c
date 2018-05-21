@@ -46,7 +46,7 @@ void* Connect_demo(void* param){
 	memset(&post_req, 0, sizeof(post_req));
 }
 
-void* Send_process(void* param)
+void* Send_demo(void* param)
 {
 int ret;
 	PACKET packet;
@@ -221,11 +221,10 @@ int main(int argc, char **argv)
 	}else{
 		MAIN_DBG("connect server OK\n");
 	}
-	pthread_create(&recv_pid, NULL, recv_process, &sock);
 	Connect_demo(&sock);
 	Recv_demo(&sock);
 	while(1){
-		Send_process(&sock);
+		Send_demo(&sock);
 		Recv_demo(&sock);
 		sleep(30);
 	}
