@@ -46,7 +46,7 @@ void* Connect_demo(void* param){
 	memset(&post_req, 0, sizeof(post_req));
 }
 
-void* send_process(void* param)
+void* Send_process(void* param)
 {
 int ret;
 	PACKET packet;
@@ -88,7 +88,7 @@ int ret;
 #define	KEEP_ALIVE_MSG		"$#AT#\r"
 #define	KEEP_ALIVE_RSP		"$OK##\r"
 
-void* recv_process(void* param)
+void* Recv_demo(void* param)
 {
 	char msg_buf[128];
 	int ret;
@@ -96,7 +96,7 @@ void* recv_process(void* param)
 	int* msg_type;
 	int sock = *((int*)param);
 
-	while(1){
+	
 		memset(msg_buf, 0, sizeof(msg_buf));
 		ret = receive_packet(sock, msg_buf, sizeof(msg_buf), 0);
 		if(ret > 0){
@@ -196,9 +196,9 @@ void* recv_process(void* param)
 				free_unpacket_msg(msg_unpacket);
 			}
 		}else if(ret == 0){
-			break;
+			//break;
 		}
-	}
+	
 
 	return 0;
 }
@@ -223,11 +223,12 @@ int main(int argc, char **argv)
 	}
 	pthread_create(&recv_pid, NULL, recv_process, &sock);
 	Connect_demo(&sock);
+	Recv_demo(&sock);
 	while(1){
-		send_process(&sock);
+		Send_process(&sock);
+		Recv_demo(&sock);
 		sleep(30);
 	}
-	pthread_join(recv_pid, NULL);
 	return 0;
 }
 
