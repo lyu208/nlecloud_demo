@@ -1,21 +1,20 @@
 #include<stdio.h>      /*标准输入输出定义*/  
 #include<stdlib.h>     /*标准函数库定义*/  
-#include<unistd.h>     /*Unix 标准函数定义*/  
 #include<sys/types.h>   
 #include<sys/stat.h>     
 #include<fcntl.h>      /*文件控制定义*/  
-#include<termios.h>    /*PPSIX 终端控制定义*/  
-#include<errno.h>      /*错误号定义*/  
+ 
+//#include<errno.h>      /*错误号定义*/  
 #include<string.h>  
 #include <time.h>
-#include <pthread.h>
+
 
 #include "tcpsock.h"
 #include "cJSON.h"
 #include "cloud.h"
 
-#define MAIN_DBG(fmt, args...)	printf("DEBUG:%s:%d, "fmt, __FUNCTION__, __LINE__, ##args)
-#define MAIN_ERR(fmt, args...)	printf("ERR:%s:%d, "fmt, __FUNCTION__, __LINE__, ##args)
+//#define MAIN_DBG(fmt, args...)	printf("DEBUG:%s:%d, "fmt, __FUNCTION__, __LINE__, ##args)
+//#define MAIN_ERR(fmt, args...)	printf("ERR:%s:%d, "fmt, __FUNCTION__, __LINE__, ##args)
 
 
 
@@ -37,7 +36,7 @@ void* Connect_demo(void* param){
 	packet = packet_msg(&con_req);
 	ret = send_packet(sock, packet, strlen(packet), 0);
 	if(ret < 0){
-		MAIN_ERR("PACKET_TYPE_CONN_REQ error\n");
+		printf("PACKET_TYPE_CONN_REQ error\n");
 	}
 	free_packet_msg(packet);
 	//延时10ms
@@ -68,15 +67,15 @@ int ret;
 		post_req.data_len = strlen(post_req.data);
 		packet = packet_msg(&post_req);
 		if(packet == NULL){
-			MAIN_ERR("packet_msg JSON 1 error\n");
+			printf("packet_msg JSON 1 error\n");
 		}else{
-			MAIN_DBG("POST JSON 1 \n");
+			printf("POST JSON 1 \n");
 			send_flag = 1;
 		}
 		if(send_flag){
 			ret = send_packet(sock, packet, strlen(packet), 0);
 			if(ret < 0){
-				MAIN_ERR("PACKET_TYPE_POST_DATA error\n");
+				printf("PACKET_TYPE_POST_DATA error\n");
 			}
 		free_packet_msg(packet);
 		send_flag = 0;
@@ -104,27 +103,27 @@ void* Recv_demo(void* param)
 			msg_unpacket = unpacket_msg(msg_buf);
 			if(msg_unpacket == NULL){
 				if(strcmp(msg_buf, KEEP_ALIVE_MSG) == 0){
-					MAIN_DBG("recv keep alive\n");
+					printf("recv keep alive\n");
 					ret = send_packet(sock, KEEP_ALIVE_RSP, strlen(KEEP_ALIVE_RSP), 0);
 					if(ret < 0){
-						MAIN_ERR("send keep alive error\n");
+						printf("send keep alive error\n");
 					}else{
-						MAIN_DBG("send keep alive OK\n");
+						printf("send keep alive OK\n");
 					}
 				}else{
 					hex_dump((const unsigned char*)msg_buf, ret);
-					MAIN_DBG("not JSON msg or keep alive msg(%s) \n", msg_buf);
+					printf("not JSON msg or keep alive msg(%s) \n", msg_buf);
 				}
 			}else{
-				MAIN_DBG("recv:\n%s\n", msg_buf);
+				printf("recv:\n%s\n", msg_buf);
 				msg_type = (int*)msg_unpacket;
 				switch(*msg_type){
 					case PACKET_TYPE_CONN_RSP:{
 						CON_REQ_RSP* con_req_rsp = (CON_REQ_RSP*)msg_unpacket;
 
-						MAIN_DBG("unpacket, msg_type:%d, status:%d\n", con_req_rsp->msg_type, con_req_rsp->status);
+						printf("unpacket, msg_type:%d, status:%d\n", con_req_rsp->msg_type, con_req_rsp->status);
 						if(con_req_rsp->status == 0){
-							MAIN_DBG("server authentication OK\n");
+							printf("server authentication OK\n");
 							is_auth_ok = 1;
 						}
 						break;
@@ -132,9 +131,9 @@ void* Recv_demo(void* param)
 					case PACKET_TYPE_POST_RSP:{
 						POST_REQ_RSP* post_req_rsp = (POST_REQ_RSP*)msg_unpacket;
 
-						MAIN_DBG("unpacket, msg_type:%d, msg_id:%d status:%d\n", post_req_rsp->msg_type, post_req_rsp->msg_id, post_req_rsp->status);
+						printf("unpacket, msg_type:%d, msg_id:%d status:%d\n", post_req_rsp->msg_type, post_req_rsp->msg_id, post_req_rsp->status);
 						if(post_req_rsp->status == 0){
-							MAIN_DBG("POST SUCESS\n");
+							printf("POST SUCESS\n");
 						}
 						
 						break;
@@ -145,52 +144,52 @@ void* Recv_demo(void* param)
 						PACKET packet;
 						CMD_REQ_RSP* cmd_rsp = (CMD_REQ_RSP*)cmd_rcv;	//CMD_REQ struct is same with CMD_REQ_RSP struct
 
-						MAIN_DBG("recv CMD, data type:%d\n", cmd_rcv->data_type);
+						printf("recv CMD, data type:%d\n", cmd_rcv->data_type);
 						switch(cmd_rcv->data_type){
 							case CMD_DATA_TYPE_NUM:
 								is_cmd_need_rsp = 1;
-								MAIN_DBG("unpacket, msg_type:%d, msg_id:%d apitag:%s, data:%d\n", 
+								printf("unpacket, msg_type:%d, msg_id:%d apitag:%s, data:%d\n", 
 										cmd_rcv->msg_type, cmd_rcv->cmd_id, cmd_rcv->api_tag, *((int*)cmd_rcv->data));
 	
 								break;
 							case CMD_DATA_TYPE_DOUBLE:
 								is_cmd_need_rsp = 1;
-								MAIN_DBG("unpacket, msg_type:%d, msg_id:%d apitag:%s, data:%f\n", 
+								printf("unpacket, msg_type:%d, msg_id:%d apitag:%s, data:%f\n", 
 										cmd_rcv->msg_type, cmd_rcv->cmd_id, cmd_rcv->api_tag, *((double*)cmd_rcv->data));
 								break;
 							case CMD_DATA_TYPE_STRING:
 								is_cmd_need_rsp = 1;
-								MAIN_DBG("unpacket, msg_type:%d, msg_id:%d apitag:%s, data:%s\n", 
+								printf("unpacket, msg_type:%d, msg_id:%d apitag:%s, data:%s\n", 
 										cmd_rcv->msg_type, cmd_rcv->cmd_id, cmd_rcv->api_tag, (char*)cmd_rcv->data);
 								break;
 							case CMD_DATA_TYPE_JSON:
 								is_cmd_need_rsp = 1;
-								MAIN_DBG("unpacket, msg_type:%d, msg_id:%d apitag:%s, data:%s\n", 
+								printf("unpacket, msg_type:%d, msg_id:%d apitag:%s, data:%s\n", 
 										cmd_rcv->msg_type, cmd_rcv->cmd_id, cmd_rcv->api_tag, (char*)cmd_rcv->data);
 								break;
 							default:
-								MAIN_ERR("data_type(%d) error\n", cmd_rcv->data_type);
+								printf("data_type(%d) error\n", cmd_rcv->data_type);
 						}
 						if(is_cmd_need_rsp){
 							cmd_rsp->msg_type = PACKET_TYPE_CMD_RSP;
 							packet = packet_msg(cmd_rsp);
 							cmd_rsp->msg_type = PACKET_TYPE_CMD_REQ;
 							if(packet == NULL){
-								MAIN_ERR("packet_msg PACKET_TYPE_CMD_RSP error\n");
+								printf("packet_msg PACKET_TYPE_CMD_RSP error\n");
 								break;
 							}
 							ret = send_packet(sock, packet, strlen(packet), 0);
 							if(ret < 0){
-								MAIN_ERR("send PACKET_TYPE_CMD_RSP error\n");
+								printf("send PACKET_TYPE_CMD_RSP error\n");
 							}else{
-								MAIN_DBG("cmd rsp:\n%s\n", packet);
+								printf("cmd rsp:\n%s\n", packet);
 							}
 							free_packet_msg(packet);
 						}
 						break;
 					}
 					default:
-						MAIN_ERR("msg_type(%d) error\n", *msg_type);
+						printf("msg_type(%d) error\n", *msg_type);
 						break;
 				}
 				free_unpacket_msg(msg_unpacket);
@@ -211,15 +210,15 @@ int main(int argc, char **argv)
 	pthread_t recv_pid;
 	sock = open_client_port(0);
 	if(sock == -1){
-		MAIN_ERR("open_client_port error\n");
+		printf("open_client_port error\n");
 		return 0;
 	}
 
 	if(connection_server(sock, SERVER_IP, SERVER_PORT) < 0){
-		MAIN_ERR("connection_server error\n");
+		printf("connection_server error\n");
 		return 0;
 	}else{
-		MAIN_DBG("connect server OK\n");
+		printf("connect server OK\n");
 	}
 	Connect_demo(&sock);
 	Recv_demo(&sock);
